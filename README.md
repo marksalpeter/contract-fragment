@@ -1,3 +1,9 @@
+This package contains an updated implementation of the contract fragment pattern put forward by @JakeWharton that uses the parent fragment or the activity to check for a contract implementation. See the original idea [on jakes github](https://gist.github.com/JakeWharton/2621173)
+
+This package also contains a base `Fragment` and `DialogFragment` implementation with bug fixes for child fragment animations and immersive dialog fragments. Learn more about these bugs [here](https://stackoverflow.com/questions/32758559/maintain-immersive-mode-when-dialogfragment-is-shown) and [here] 
+
+If new fragment related ui issues pop up, I'll be sure to address them in these base classes.
+
 # How to install 
 add the followig to gradle to install
 ```
@@ -11,13 +17,13 @@ allprojects{
 ```
 dependencies {
     ...
-    compile 'com.github.marksalpeter:contract-fragment:1.0
+    compile 'com.github.marksalpeter:contract-fragment:0.1
 }
 ```
 
-# Example
+# Examples
 ```java 
-import com.marksalpeter.contractfragment.ContractFragment;
+import com.marksalpeter.fragment.ContractFragment;
 
 public class MyFragment extends ContractFragment<Name.Contract> {
 
