@@ -4,7 +4,6 @@ import android.animation.Animator;
 import android.animation.AnimatorInflater;
 import android.animation.ValueAnimator;
 import android.app.Dialog;
-import android.app.DialogFragment;
 import android.app.Fragment;
 import android.content.res.Resources;
 import android.graphics.Color;
@@ -23,13 +22,16 @@ import android.widget.EditText;
 import java.lang.reflect.Field;
 
 /**
- * ImmersiveDialogFragment is a dialog fragment with no decoration that will take up as much of the screen
- * as possible
+ * DialogFragment is a dialog fragment with the fragment animation bug fix applied and an immersive mode
+ * bug fix applied (when
+ * read more about the bug fixes here:
+ *  - http://stackoverflow.com/questions/14900738/nested-fragments-disappear-during-transition-animation
+ *  - https://stackoverflow.com/questions/32758559/maintain-immersive-mode-when-dialogfragment-is-shown
  * Created by Mark on 11/9/16.
  */
-abstract class ImmersiveDialogFragment extends DialogFragment implements ViewTreeObserver.OnGlobalLayoutListener {
+public abstract class DialogFragment extends android.app.DialogFragment implements ViewTreeObserver.OnGlobalLayoutListener {
 
-    private static String TAG = ImmersiveDialogFragment.class.getSimpleName();
+    private static String TAG = DialogFragment.class.getSimpleName();
 
     /**
      * sDefaultChildAnimationDuration is an arbitrary, but reasonable transition duration we can use if
@@ -39,8 +41,16 @@ abstract class ImmersiveDialogFragment extends DialogFragment implements ViewTre
 
     private Dialog mDialog;
     private Handler mHandler;
+    private boolean mIsImmersive;
 
-    @Override public Dialog onCreateDialog(final Bundle savedInstanceState) {
+    @Override public Dialog onCreateDialog(Bundle savedInstanceState) {
+
+        // check to see if the dialog is immersive
+        mIsImmersive = (getActivity().getWindow().getDecorView().getSystemUiVisibility() & View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY) == View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        if (!mIsImmersive) {
+            Log.d(TAG, getActivity().getWindow().getDecorView().getSystemUiVisibility() + " is not immersive");
+            return super.onCreateDialog(savedInstanceState);
+        }
 
         // create a handler
         mHandler = new Handler();
@@ -94,9 +104,8 @@ abstract class ImmersiveDialogFragment extends DialogFragment implements ViewTre
         super.onDestroyView();
     }
 
-    @Override
-    public void onGlobalLayout() {
-        if (!isDialog()) {
+    @Override public void onGlobalLayout() {
+        if (!isDialog() || !mIsImmersive) {
             return;
         }
         mHandler.postDelayed(new Runnable() {
@@ -109,7 +118,7 @@ abstract class ImmersiveDialogFragment extends DialogFragment implements ViewTre
 
     @Override public void onResume() {
         super.onResume();
-        if (!isDialog()) {
+        if (!isDialog() || !mIsImmersive) {
             return;
         }
 
@@ -120,40 +129,33 @@ abstract class ImmersiveDialogFragment extends DialogFragment implements ViewTre
         EditText firstEditText = getFirstEditText((ViewGroup) mDialog.getWindow().getDecorView());
         if (firstEditText != null) {
             mDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-            Log.d("FFF", firstEditText.toString() + " | " + firstEditText.getText().toString() + " " + firstEditText.getText().length());
             firstEditText.setSelection(firstEditText.getText().length());
         }
     }
 
+    /**
+     * onCreateAnimator is overridden to fix the following animation bug:
+     * http://stackoverflow.com/questions/14900738/nested-fragments-disappear-during-transition-animation
+     */
     @Override public Animator onCreateAnimator(int transit, boolean enter, int nextAnim) {
-
-        // if a child fragment is being removed because its parent is being removed
-        // return a fake animator that lasts the duration of the parent's animator
-        Fragment removingParentFragment = getRemovingParent(getParentFragment());
-        if (!enter && removingParentFragment != null) {
-            // This is a workaround for the bug where child fragments disappear when
-            // the parent is removed (as all children are first removed from the parent)
-            // See https://code.google.com/p/android/issues/detail?id=55228
-            long duration = getNextAnimatiorDuration(removingParentFragment);
-            Log.d(TAG, "TAG: " + getTag() + " | DURATION: " + duration);
-            return ValueAnimator.ofFloat(0, 1).setDuration(duration);
+        if(!enter) {
+            Fragment removingParentFragment = getRemovingParentFragment();
+            if (removingParentFragment != null) {
+                return ValueAnimator.ofFloat(0f, 1f).setDuration(getNextAnimatorDuration(removingParentFragment));
+            }
         }
-
-        // inflate the animator
-        Animator animator = null;
-        try {
-            animator = AnimatorInflater.loadAnimator(getActivity(), nextAnim);
-        } catch (Exception e) {}
-
-        return animator;
+        return super.onCreateAnimator(transit, enter, nextAnim);
     }
 
+
     /**
-     * getRemovingParent returns the first fragment or parent fragment that is removing r null if it can't find one
+     * getRemovingParentFragment returns the first fragment or parent fragment that is removing r null if it can't find one
      */
-    private static Fragment getRemovingParent(Fragment fragment) {
+    private android.app.Fragment getRemovingParentFragment() {
+        android.app.Fragment fragment = getParentFragment();
         while (fragment != null) {
             if (fragment.isRemoving()) {
+                Log.v(TAG, fragment.toString() + " is removing");
                 return fragment;
             }
             fragment = fragment.getParentFragment();
@@ -163,28 +165,34 @@ abstract class ImmersiveDialogFragment extends DialogFragment implements ViewTre
 
     /**
      * getNextAnimationDuration returns the "mNextAnim" animators duration
-     * TODO: this is broken, so i just set sDefaultChildAnimationDuration to @integer/slide_transition_duration
+     * TODO: this needs a bug fix, but its not mission critical unless people are adding fragment transition
      */
-    private static long getNextAnimatiorDuration(Fragment fragment) {
+    private static long getNextAnimatorDuration(android.app.Fragment fragment) {
         try {
 
             // attempt to get the resource ID of the next animation that will be applied to the given fragment.
-            Field nextAnimField = Fragment.class.getDeclaredField("mNextAnim");
+            Field nextAnimField = android.app.Fragment.class.getDeclaredField("mNextAnim");
             nextAnimField.setAccessible(true);
-            int nextAnimResource = nextAnimField.getInt(fragment);
+            int nextAnimResourceID = nextAnimField.getInt(fragment);
+
+            Log.v(TAG, "nextAnimResourceID: " + nextAnimResourceID);
+            if (nextAnimResourceID < 1) {
+                return sDefaultChildAnimationDuration;
+            }
 
             // load the animator
-            Animator nextAnim = AnimatorInflater.loadAnimator(fragment.getActivity(), nextAnimResource);
+            Animator nextAnim = AnimatorInflater.loadAnimator(fragment.getActivity(), nextAnimResourceID);
+
+            Log.v(TAG, "nextAnim.getDuration(): " + nextAnim.getDuration());
 
             // return its duration
             return(nextAnim == null || nextAnim.getDuration() < 0) ? sDefaultChildAnimationDuration : nextAnim.getDuration();
 
         } catch (NoSuchFieldException|IllegalAccessException|Resources.NotFoundException ex) {
-//            Log.w(TAG, "Unable to load next animation from parent.", ex);
+            Log.e(TAG, ex.getMessage(), ex);
             return sDefaultChildAnimationDuration;
         }
     }
-
 
     /**
      * getFirstEditText returns the first edit text in the parents hierarchy
@@ -234,6 +242,13 @@ abstract class ImmersiveDialogFragment extends DialogFragment implements ViewTre
      */
     private boolean isDialog() {
         return mDialog != null && mDialog.getWindow() != null;
+    }
+
+    /**
+     * isImmersive returns true if the dialog was initialized in immersive mode
+     */
+    protected boolean isImmersive() {
+        return mIsImmersive;
     }
 
 }

@@ -7,10 +7,10 @@ import java.lang.reflect.ParameterizedType;
 
 /**
  * ContractDialogFragment is a dialog fragment whos parent fragment or parent activity must implement an interface
- * Created by Mark Salpeter. Original concepts taken from Jake Thwarton
+ * Created by Mark Salpeter. Original concepts taken from Jake Wharton
  * see https://gist.github.com/JakeWharton/2621173
  */
-public abstract class ContractDialogFragment<T> extends ImmersiveDialogFragment {
+public abstract class ContractDialogFragment<T> extends DialogFragment {
 
     public final static String TAG = ContractDialogFragment.class.getSimpleName();
 
