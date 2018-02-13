@@ -1,6 +1,6 @@
 This package contains an updated implementation of the contract fragment pattern put forward by @JakeWharton that uses the parent fragment or the activity to check for a contract implementation. See the original idea [on jakes github](https://gist.github.com/JakeWharton/2621173)
 
-This package also contains a base `Fragment` and `DialogFragment` implementation with bug fixes for child fragment animations and immersive dialog fragments. Learn more about these bugs [here](https://stackoverflow.com/questions/32758559/maintain-immersive-mode-when-dialogfragment-is-shown) and [here] 
+This package also contains a base `Fragment` and `DialogFragment` implementation with bug fixes for child fragment animations and immersive dialog fragments. Learn more about these bugs [here](http://stackoverflow.com/questions/14900738/nested-fragments-disappear-during-transition-animation) and [here](https://stackoverflow.com/questions/32758559/maintain-immersive-mode-when-dialogfragment-is-shown)
 
 If new fragment related ui issues pop up, I'll be sure to address them in these base classes.
 
