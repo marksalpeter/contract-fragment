@@ -39,14 +39,14 @@ public class MyFragment extends ContractFragment<Name.Contract> {
     /**
      * newInterface returns a new fragment
      */
-    public static Name newInstance() {
-        Name fragment = new Name();
+    public static MyFragment newInstance() {
+        MyFragment fragment = new MyFragment();
         return fragment;
     }
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-		getContract().method();
+	getContract().method();
     }
 }
 ```
