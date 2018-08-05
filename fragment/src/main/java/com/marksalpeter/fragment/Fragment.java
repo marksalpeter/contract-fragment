@@ -39,6 +39,25 @@ public class Fragment extends android.app.Fragment {
         return super.onCreateAnimator(transit, enter, nextAnim);
     }
 
+
+    /**
+     * onDetach is overridden to fix a child fragment manager related bug in older versions of android (present on v17)
+     * that causes a runtime error.
+     * see https://stackoverflow.com/questions/15207305/getting-the-error-java-lang-illegalstateexception-activity-has-been-destroyed
+     */
+    @Override public void onDetach() {
+        super.onDetach();
+        try {
+            Field childFragmentManager = android.app.Fragment.class.getDeclaredField("mChildFragmentManager");
+            childFragmentManager.setAccessible(true);
+            childFragmentManager.set(this, null);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
      * getRemovingParentFragment returns the first fragment or parent fragment that is removing r null if it can't find one
      */
