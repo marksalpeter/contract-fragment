@@ -17,7 +17,7 @@ allprojects{
 ```
 dependencies {
     ...
-    compile 'com.github.marksalpeter:contract-fragment:0.1
+    compile 'com.github.marksalpeter:contract-fragment:0.1.5
 }
 ```
 
